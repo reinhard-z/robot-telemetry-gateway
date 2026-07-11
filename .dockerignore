@@ -1,0 +1,10 @@
+.git
+.github
+.idea
+.vscode
+.venv
+PLAN.md
+__pycache__
+build
+install
+log
