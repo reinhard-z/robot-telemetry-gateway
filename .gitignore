@@ -1,0 +1,26 @@
+# Local planning notes
+/PLAN.md
+
+# ROS 2 and colcon output
+build/
+install/
+log/
+
+# Python bytecode and tooling caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local environments
+.venv/
+venv/
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
