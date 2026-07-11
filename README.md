@@ -3,7 +3,8 @@
 A small Python and ROS 2 project demonstrating telemetry freshness,
 stale-signal recovery, and QoS trade-offs at the robot-to-platform boundary.
 
-> **Status:** Initial project setup. The ROS 2 implementation is in progress.
+> **Status:** The containerized ROS 2 Python package builds and passes its smoke
+> tests. The telemetry nodes are the next implementation step.
 
 ## Why this project exists
 
@@ -40,9 +41,33 @@ stale detection and recovery can be demonstrated without external hardware.
   semantics.
 - Provide a short, reproducible local demonstration and automated tests.
 
-## How to run
+## Development setup
 
-Build and run instructions will be added with the first working ROS 2 slice.
+The development environment uses ROS 2 Jazzy on Ubuntu 24.04 in Docker. It has
+been tested with Docker Desktop on Apple Silicon.
+
+Build the development image from the repository root:
+
+```bash
+docker build --tag robot-telemetry-gateway:jazzy .
+```
+
+Start a shell with the repository mounted as a ROS workspace package:
+
+```bash
+./scripts/ros.sh
+```
+
+Build and test the package inside the container:
+
+```bash
+colcon build --symlink-install
+colcon test --event-handlers console_direct+
+colcon test-result --verbose
+```
+
+The container is removed when its shell exits, so its build artifacts last only
+for that development session.
 
 ## Deliberately out of scope
 
@@ -60,3 +85,7 @@ working and tested.
 
 This project is part of my exploration of robotics-platform engineering. More
 about my background and related work is available at [mrza.ch](https://mrza.ch/).
+
+## License
+
+This project is available under the [MIT License](LICENSE).
