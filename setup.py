@@ -23,5 +23,9 @@ setup(
     license="MIT",
     url="https://github.com/reinhard-z/robot-telemetry-gateway",
     tests_require=["pytest"],
-    entry_points={"console_scripts": []},
+    entry_points={
+        "console_scripts": [
+            "robot_simulator = robot_telemetry.simulator_node:main",
+        ],
+    },
 )
