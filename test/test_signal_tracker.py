@@ -29,18 +29,23 @@ class SignalTrackerTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.clock = FakeClock(initial_time=100.0)
-        self.tracker = SignalTracker(stale_threshold=2.5, clock=self.clock)
+        self.tracker = SignalTracker[float](
+            stale_threshold=2.5,
+            clock=self.clock,
+        )
         self.measurement_time = datetime(2026, 7, 11, 10, 0, tzinfo=timezone.utc)
         self.receipt_time = self.measurement_time + timedelta(milliseconds=50)
 
     def record_measurement(
         self,
         *,
+        value: float = 42.0,
         measurement_time: datetime | None = None,
         receipt_time: datetime | None = None,
     ) -> SignalTransition | None:
         """Record a measurement using the test's default timestamps."""
         return self.tracker.record_measurement(
+            value=value,
             measurement_time=measurement_time or self.measurement_time,
             receipt_time=receipt_time or self.receipt_time,
         )
@@ -49,11 +54,12 @@ class SignalTrackerTest(unittest.TestCase):
         self.assertEqual(self.tracker.state, SignalState.WAITING)
         self.assertIsNone(self.tracker.latest_measurement_time)
         self.assertIsNone(self.tracker.latest_receipt_time)
+        self.assertIsNone(self.tracker.latest_value)
         self.assertIsNone(self.tracker.age)
         self.assertIsNone(self.tracker.check_health())
 
-    def test_first_measurement_becomes_healthy_and_records_timestamps(self) -> None:
-        transition = self.record_measurement()
+    def test_first_measurement_becomes_healthy_and_records_data(self) -> None:
+        transition = self.record_measurement(value=12.5)
 
         self.assertEqual(transition, SignalTransition.BECAME_HEALTHY)
         self.assertEqual(self.tracker.state, SignalState.HEALTHY)
@@ -62,6 +68,7 @@ class SignalTrackerTest(unittest.TestCase):
             self.measurement_time,
         )
         self.assertEqual(self.tracker.latest_receipt_time, self.receipt_time)
+        self.assertEqual(self.tracker.latest_value, 12.5)
         self.assertEqual(self.tracker.age, 0.0)
 
     def test_age_below_threshold_remains_healthy(self) -> None:
@@ -99,6 +106,7 @@ class SignalTrackerTest(unittest.TestCase):
         next_receipt_time = self.receipt_time + timedelta(seconds=2)
 
         transition = self.record_measurement(
+            value=43.0,
             measurement_time=next_measurement_time,
             receipt_time=next_receipt_time,
         )
@@ -107,6 +115,7 @@ class SignalTrackerTest(unittest.TestCase):
         self.assertEqual(self.tracker.state, SignalState.HEALTHY)
         self.assertEqual(self.tracker.latest_measurement_time, next_measurement_time)
         self.assertEqual(self.tracker.latest_receipt_time, next_receipt_time)
+        self.assertEqual(self.tracker.latest_value, 43.0)
         self.assertEqual(self.tracker.age, 0.0)
 
     def test_new_measurement_after_stale_reports_recovery(self) -> None:
@@ -145,6 +154,7 @@ class SignalTrackerTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "finite number"):
             tracker.record_measurement(
+                value=42.0,
                 measurement_time=self.measurement_time,
                 receipt_time=self.receipt_time,
             )
