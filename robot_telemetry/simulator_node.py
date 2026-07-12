@@ -12,6 +12,10 @@ from rclpy.node import Node
 from rclpy.publisher import Publisher
 
 from robot_telemetry.pause_window import PauseWindow
+from robot_telemetry.qos import (
+    DEFAULT_QOS_RELIABILITY,
+    telemetry_qos_profile,
+)
 
 from sensor_msgs.msg import BatteryState
 
@@ -25,7 +29,6 @@ DEFAULT_BATTERY_PAUSE_START_SECONDS = 8.0
 DEFAULT_BATTERY_PAUSE_DURATION_SECONDS = 5.0
 DEFAULT_POSITION_PAUSE_START_SECONDS = 21.0
 DEFAULT_POSITION_PAUSE_DURATION_SECONDS = 5.0
-PUBLISHER_QUEUE_DEPTH = 10
 POSITION_STEP_METERS = 0.25
 NANOSECONDS_PER_SECOND = 1_000_000_000
 
@@ -70,16 +73,22 @@ class RobotSimulator(Node):
             DEFAULT_BATTERY_PAUSE_START_SECONDS,
             DEFAULT_BATTERY_PAUSE_DURATION_SECONDS,
         )
+        qos_profile = telemetry_qos_profile(
+            self.declare_parameter(
+                "qos_reliability",
+                DEFAULT_QOS_RELIABILITY,
+            ).value
+        )
 
         self._position_publisher: Publisher = self.create_publisher(
             PoseStamped,
             POSITION_TOPIC,
-            PUBLISHER_QUEUE_DEPTH,
+            qos_profile,
         )
         self._battery_publisher: Publisher = self.create_publisher(
             BatteryState,
             BATTERY_TOPIC,
-            PUBLISHER_QUEUE_DEPTH,
+            qos_profile,
         )
 
         publish_period = 1.0 / publish_rate
