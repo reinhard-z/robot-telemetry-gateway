@@ -14,6 +14,10 @@ setup(
             [f"resource/{package_name}"],
         ),
         (f"share/{package_name}", ["package.xml"]),
+        (
+            f"share/{package_name}/launch",
+            ["launch/local_pipeline.launch.py"],
+        ),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
