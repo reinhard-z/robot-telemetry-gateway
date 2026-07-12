@@ -11,11 +11,23 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.publisher import Publisher
 
+from sensor_msgs.msg import BatteryState
+
 
 POSITION_TOPIC = "/telemetry/position"
 POSITION_FRAME_ID = "map"
+BATTERY_TOPIC = "/telemetry/battery"
+BATTERY_FRAME_ID = "base_link"
 DEFAULT_PUBLISH_RATE_HZ = 1.0
+PUBLISHER_QUEUE_DEPTH = 10
 POSITION_STEP_METERS = 0.25
+
+# Nominal values for deterministic simulation, not a specific battery model.
+BATTERY_DRAIN_PER_SAMPLE = 0.01
+BATTERY_FULL_VOLTAGE = 12.6
+BATTERY_EMPTY_VOLTAGE = 9.6
+BATTERY_CAPACITY_AH = 5.0
+BATTERY_TEMPERATURE_CELSIUS = 25.0
 
 
 def _validate_publish_rate(value: object) -> float:
@@ -29,10 +41,10 @@ def _validate_publish_rate(value: object) -> float:
 
 
 class RobotSimulator(Node):
-    """Publish a deterministic position moving along the positive x-axis."""
+    """Publish deterministic position and battery telemetry."""
 
     def __init__(self) -> None:
-        """Create the position publisher and its configurable timer."""
+        """Create telemetry publishers and their configurable timers."""
         super().__init__("robot_simulator")
 
         publish_rate = _validate_publish_rate(
@@ -45,12 +57,24 @@ class RobotSimulator(Node):
         self._position_publisher: Publisher = self.create_publisher(
             PoseStamped,
             POSITION_TOPIC,
-            10,
+            PUBLISHER_QUEUE_DEPTH,
         )
-        self._sample_index = 0
-        self._timer = self.create_timer(
-            1.0 / publish_rate,
+        self._battery_publisher: Publisher = self.create_publisher(
+            BatteryState,
+            BATTERY_TOPIC,
+            PUBLISHER_QUEUE_DEPTH,
+        )
+
+        publish_period = 1.0 / publish_rate
+        self._position_sample_index = 0
+        self._battery_sample_index = 0
+        self._position_timer = self.create_timer(
+            publish_period,
             self._publish_position,
+        )
+        self._battery_timer = self.create_timer(
+            publish_period,
+            self._publish_battery,
         )
 
     def _publish_position(self) -> None:
@@ -58,11 +82,47 @@ class RobotSimulator(Node):
         message = PoseStamped()
         message.header.stamp = self.get_clock().now().to_msg()
         message.header.frame_id = POSITION_FRAME_ID
-        message.pose.position.x = self._sample_index * POSITION_STEP_METERS
+        message.pose.position.x = (
+            self._position_sample_index * POSITION_STEP_METERS
+        )
         message.pose.orientation.w = 1.0
 
         self._position_publisher.publish(message)
-        self._sample_index += 1
+        self._position_sample_index += 1
+
+    def _publish_battery(self) -> None:
+        """Publish the next sample from the simulated discharging battery."""
+        percentage = max(
+            0.0,
+            1.0 - self._battery_sample_index * BATTERY_DRAIN_PER_SAMPLE,
+        )
+        voltage_range = BATTERY_FULL_VOLTAGE - BATTERY_EMPTY_VOLTAGE
+
+        message = BatteryState()
+        message.header.stamp = self.get_clock().now().to_msg()
+        message.header.frame_id = BATTERY_FRAME_ID
+        message.percentage = percentage
+        message.voltage = BATTERY_EMPTY_VOLTAGE + voltage_range * percentage
+        message.capacity = BATTERY_CAPACITY_AH
+        message.design_capacity = BATTERY_CAPACITY_AH
+        message.charge = BATTERY_CAPACITY_AH * percentage
+        # Current draw is not part of this simple battery simulation.
+        message.current = math.nan
+        message.temperature = BATTERY_TEMPERATURE_CELSIUS
+        message.power_supply_status = (
+            BatteryState.POWER_SUPPLY_STATUS_DISCHARGING
+            if percentage > 0.0
+            else BatteryState.POWER_SUPPLY_STATUS_NOT_CHARGING
+        )
+        message.power_supply_health = BatteryState.POWER_SUPPLY_HEALTH_GOOD
+        message.power_supply_technology = (
+            BatteryState.POWER_SUPPLY_TECHNOLOGY_LION
+        )
+        message.present = True
+        message.location = "main_battery"
+
+        self._battery_publisher.publish(message)
+        self._battery_sample_index += 1
 
 
 def main(args: list[str] | None = None) -> None:
