@@ -4,7 +4,7 @@ set -euo pipefail
 
 readonly script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly repository_root="$(cd -- "${script_dir}/.." && pwd)"
-readonly image="${ROBOT_TELEMETRY_IMAGE:-robot-telemetry-gateway:jazzy}"
+readonly image="${ROBOT_TELEMETRY_IMAGE:-robot-telemetry-gateway:lyrical}"
 
 docker_arguments=(
   --rm
