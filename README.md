@@ -35,6 +35,13 @@ The simulator pauses individual signals on a deterministic schedule. The
 gateway detects each pause and recovery independently, without requiring
 external hardware.
 
+## Demo
+
+![Terminal demo showing independent telemetry failures and recoveries](docs/assets/telemetry-demo.gif)
+
+The battery and position streams become stale and recover independently before
+both ROS nodes shut down cleanly.
+
 ## Project goals
 
 - Write clear, typed, idiomatic Python.
