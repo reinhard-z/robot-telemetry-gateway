@@ -26,7 +26,7 @@ setup(
     description="ROS 2 telemetry simulator and freshness-tracking gateway.",
     license="MIT",
     url="https://github.com/reinhard-z/robot-telemetry-gateway",
-    tests_require=["pytest"],
+    extras_require={"test": ["pytest"]},
     entry_points={
         "console_scripts": [
             "robot_simulator = robot_telemetry.simulator_node:main",

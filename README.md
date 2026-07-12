@@ -66,13 +66,13 @@ clock from producing invalid stale-state decisions.
 
 ## Run locally
 
-The development environment uses ROS 2 Jazzy on Ubuntu 24.04 in Docker. It has
+The development environment uses ROS 2 Lyrical on Ubuntu 26.04 in Docker. It has
 been tested with Docker Desktop on Apple Silicon.
 
 Build the development image from the repository root:
 
 ```bash
-docker build --tag robot-telemetry-gateway:jazzy .
+docker build --tag robot-telemetry-gateway:lyrical .
 ```
 
 Start a shell with the repository mounted below the ROS workspace source
@@ -91,7 +91,7 @@ colcon test-result --verbose
 ```
 
 The pure Python tests can also run directly on the host. ROS-only tests are
-skipped there and run authoritatively in the Jazzy container:
+skipped there and run authoritatively in the Lyrical container:
 
 ```bash
 PYTHONPATH=packages/robot_telemetry \

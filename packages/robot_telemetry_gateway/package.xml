@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>robot_telemetry_gateway</name>
+  <version>0.1.0</version>
+  <description>C++ ROS 2 gateway for telemetry freshness tracking.</description>
+
+  <maintainer email="31817478+reinhard-z@users.noreply.github.com">Reinhard Zach</maintainer>
+  <license>MIT</license>
+  <url type="repository">https://github.com/reinhard-z/robot-telemetry-gateway</url>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
