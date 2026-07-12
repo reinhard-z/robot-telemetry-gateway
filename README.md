@@ -48,13 +48,15 @@ The 2.5-second freshness threshold tolerates one delayed or missed update from
 a 1 Hz signal without immediately declaring it stale.
 
 ROS-specific publishing, subscription, and message conversion stay in
-[`simulator_node.py`](robot_telemetry/simulator_node.py) and
-[`gateway_node.py`](robot_telemetry/gateway_node.py). The gateway decodes ROS
-messages into small immutable
-[Python values](robot_telemetry/telemetry_values.py) before passing them to the
-ROS-independent [`SignalTracker`](robot_telemetry/signal_tracker.py).
-[`PauseWindow`](robot_telemetry/pause_window.py) is also isolated in pure
-Python, so both behaviors can be tested without starting a ROS graph.
+[`simulator_node.py`](packages/robot_telemetry/robot_telemetry/simulator_node.py)
+and [`gateway_node.py`](packages/robot_telemetry/robot_telemetry/gateway_node.py).
+The gateway decodes ROS messages into small immutable
+[Python values](packages/robot_telemetry/robot_telemetry/telemetry_values.py)
+before passing them to the ROS-independent
+[`SignalTracker`](packages/robot_telemetry/robot_telemetry/signal_tracker.py).
+[`PauseWindow`](packages/robot_telemetry/robot_telemetry/pause_window.py) is
+also isolated in pure Python, so both behaviors can be tested without starting
+a ROS graph.
 
 Each received signal retains three notions of time. The message header records
 when the simulator produced the measurement, wall-clock receipt time makes
@@ -73,7 +75,8 @@ Build the development image from the repository root:
 docker build --tag robot-telemetry-gateway:jazzy .
 ```
 
-Start a shell with the repository mounted as a ROS workspace package:
+Start a shell with the repository mounted below the ROS workspace source
+directory:
 
 ```bash
 ./scripts/ros.sh
@@ -91,7 +94,8 @@ The pure Python tests can also run directly on the host. ROS-only tests are
 skipped there and run authoritatively in the Jazzy container:
 
 ```bash
-python3 -m unittest discover -s test -v
+PYTHONPATH=packages/robot_telemetry \
+  python3 -m unittest discover -s packages/robot_telemetry/test -v
 ```
 
 After building, source the workspace and launch the complete local pipeline:

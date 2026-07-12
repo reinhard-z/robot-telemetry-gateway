@@ -9,6 +9,7 @@ readonly image="${ROBOT_TELEMETRY_IMAGE:-robot-telemetry-gateway:jazzy}"
 docker_arguments=(
   --rm
   --init
+  # Colcon recursively discovers the ROS packages inside this repository.
   --volume "${repository_root}:/workspace/src/robot_telemetry_gateway"
   --workdir /workspace
 )
