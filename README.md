@@ -5,7 +5,7 @@ stale-signal recovery, and QoS trade-offs at the robot-to-platform boundary.
 
 > **Status:** The simulator and gateway form a working local telemetry path.
 > Position and battery signals are tracked independently through healthy,
-> stale, and recovered transitions. Integration testing and QoS work are next.
+> stale, and recovered transitions. QoS configuration and testing are next.
 
 ## Why this project exists
 
