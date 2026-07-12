@@ -5,7 +5,8 @@ stale-signal recovery, and QoS trade-offs at the robot-to-platform boundary.
 
 > **Status:** The simulator and gateway form a working local telemetry path.
 > Position and battery signals are tracked independently through healthy,
-> stale, and recovered transitions. QoS configuration and testing are next.
+> stale, and recovered transitions. QoS reliability is configurable; the
+> compatibility experiment and final documentation are next.
 
 ## Why this project exists
 
@@ -76,6 +77,14 @@ ros2 launch robot_telemetry local_pipeline.launch.py
 ```
 
 The simulator and gateway run together until you stop them with `Ctrl+C`.
+Both use reliable QoS by default. Select either `reliable` or `best_effort`
+independently for the publisher and gateway:
+
+```bash
+ros2 launch robot_telemetry local_pipeline.launch.py \
+  publisher_reliability:=best_effort \
+  gateway_reliability:=best_effort
+```
 
 The container is removed when its shell exits, so its build artifacts last only
 for that development session.

@@ -11,6 +11,10 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.subscription import Subscription
 
+from robot_telemetry.qos import (
+    DEFAULT_QOS_RELIABILITY,
+    telemetry_qos_profile,
+)
 from robot_telemetry.signal_tracker import SignalTracker, SignalTransition
 from robot_telemetry.telemetry_values import BatteryValue, PositionValue
 
@@ -21,7 +25,6 @@ POSITION_TOPIC = "/telemetry/position"
 BATTERY_TOPIC = "/telemetry/battery"
 DEFAULT_STALE_THRESHOLD_SECONDS = 2.5
 HEALTH_CHECK_PERIOD_SECONDS = 0.25
-SUBSCRIPTION_QUEUE_DEPTH = 10
 NANOSECONDS_PER_MICROSECOND = 1_000
 
 GatewayTracker = (
@@ -60,18 +63,24 @@ class TelemetryGateway(Node):
         self._battery_tracker = SignalTracker[BatteryValue](
             stale_threshold=battery_stale_threshold,
         )
+        qos_profile = telemetry_qos_profile(
+            self.declare_parameter(
+                "qos_reliability",
+                DEFAULT_QOS_RELIABILITY,
+            ).value
+        )
 
         self._position_subscription: Subscription = self.create_subscription(
             PoseStamped,
             POSITION_TOPIC,
             self._record_position,
-            SUBSCRIPTION_QUEUE_DEPTH,
+            qos_profile,
         )
         self._battery_subscription: Subscription = self.create_subscription(
             BatteryState,
             BATTERY_TOPIC,
             self._record_battery,
-            SUBSCRIPTION_QUEUE_DEPTH,
+            qos_profile,
         )
         # Health checks run independently from either message callback.
         self._health_timer = self.create_timer(
