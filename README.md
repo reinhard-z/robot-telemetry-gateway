@@ -3,8 +3,9 @@
 A small Python and ROS 2 project demonstrating telemetry freshness,
 stale-signal recovery, and QoS trade-offs at the robot-to-platform boundary.
 
-> **Status:** The containerized ROS 2 Python package builds and passes its smoke
-> tests. The telemetry nodes are the next implementation step.
+> **Status:** The simulator and gateway form a working local telemetry path.
+> Position and battery signals are tracked independently through healthy,
+> stale, and recovered transitions. Launch and QoS work are next.
 
 ## Why this project exists
 
@@ -15,7 +16,7 @@ TypeScript systems.
 The focus is deliberately narrow: build one understandable, tested telemetry
 path and explore how it behaves when sensor updates stop and recover.
 
-## Planned architecture
+## Architecture
 
 ```text
 ROS 2 simulator node
@@ -29,8 +30,9 @@ Python gateway node
   └── logs healthy, stale, and recovered transitions
 ```
 
-The simulator will pause individual signals on a deterministic schedule so
-stale detection and recovery can be demonstrated without external hardware.
+The simulator pauses individual signals on a deterministic schedule. The
+gateway detects each pause and recovery independently, without requiring
+external hardware.
 
 ## Project goals
 

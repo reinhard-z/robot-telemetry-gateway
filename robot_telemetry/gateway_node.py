@@ -11,7 +11,7 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.subscription import Subscription
 
-from robot_telemetry.signal_tracker import SignalTracker
+from robot_telemetry.signal_tracker import SignalTracker, SignalTransition
 from robot_telemetry.telemetry_values import BatteryValue, PositionValue
 
 from sensor_msgs.msg import BatteryState
@@ -20,8 +20,13 @@ from sensor_msgs.msg import BatteryState
 POSITION_TOPIC = "/telemetry/position"
 BATTERY_TOPIC = "/telemetry/battery"
 DEFAULT_STALE_THRESHOLD_SECONDS = 2.5
+HEALTH_CHECK_PERIOD_SECONDS = 0.25
 SUBSCRIPTION_QUEUE_DEPTH = 10
 NANOSECONDS_PER_MICROSECOND = 1_000
+
+GatewayTracker = (
+    SignalTracker[PositionValue] | SignalTracker[BatteryValue]
+)
 
 
 def _message_time(*, seconds: int, nanoseconds: int) -> datetime:
@@ -68,13 +73,18 @@ class TelemetryGateway(Node):
             self._record_battery,
             SUBSCRIPTION_QUEUE_DEPTH,
         )
+        # Health checks run independently from either message callback.
+        self._health_timer = self.create_timer(
+            HEALTH_CHECK_PERIOD_SECONDS,
+            self._check_signal_health,
+        )
 
     def _record_position(self, message: PoseStamped) -> None:
         """Decode and record one position measurement at the ROS boundary."""
         receipt_time = datetime.now(timezone.utc)
         position = message.pose.position
 
-        self._position_tracker.record_measurement(
+        transition = self._position_tracker.record_measurement(
             value=PositionValue(x=position.x, y=position.y, z=position.z),
             measurement_time=_message_time(
                 seconds=message.header.stamp.sec,
@@ -82,12 +92,17 @@ class TelemetryGateway(Node):
             ),
             receipt_time=receipt_time,
         )
+        self._log_transition(
+            "position",
+            self._position_tracker,
+            transition,
+        )
 
     def _record_battery(self, message: BatteryState) -> None:
         """Decode and record one battery measurement at the ROS boundary."""
         receipt_time = datetime.now(timezone.utc)
 
-        self._battery_tracker.record_measurement(
+        transition = self._battery_tracker.record_measurement(
             value=BatteryValue(
                 percentage=message.percentage,
                 voltage=message.voltage,
@@ -98,6 +113,66 @@ class TelemetryGateway(Node):
                 nanoseconds=message.header.stamp.nanosec,
             ),
             receipt_time=receipt_time,
+        )
+        self._log_transition(
+            "battery",
+            self._battery_tracker,
+            transition,
+        )
+
+    def _check_signal_health(self) -> None:
+        """Evaluate both trackers on each health-check timer tick."""
+        self._log_transition(
+            "position",
+            self._position_tracker,
+            self._position_tracker.check_health(),
+        )
+        self._log_transition(
+            "battery",
+            self._battery_tracker,
+            self._battery_tracker.check_health(),
+        )
+
+    def _log_transition(
+        self,
+        signal_name: str,
+        tracker: GatewayTracker,
+        transition: SignalTransition | None,
+    ) -> None:
+        """Log one health transition and ignore unchanged tracker states."""
+        if transition is None:
+            return
+
+        if transition is SignalTransition.BECAME_HEALTHY:
+            self.get_logger().info(f"{signal_name}: waiting -> healthy")
+            return
+
+        if transition is SignalTransition.BECAME_STALE:
+            age = tracker.age
+            if age is None:
+                raise RuntimeError("a stale signal must have a receipt time")
+
+            self.get_logger().warning(
+                f"{signal_name}: healthy -> stale "
+                f"(age={age:.2f}s, "
+                f"threshold={tracker.stale_threshold:.2f}s)"
+            )
+            return
+
+        if transition is not SignalTransition.RECOVERED:
+            raise ValueError(f"unsupported signal transition: {transition}")
+
+        measurement_time = tracker.latest_measurement_time
+        receipt_time = tracker.latest_receipt_time
+        if measurement_time is None or receipt_time is None:
+            raise RuntimeError(
+                "a recovered signal must have recorded timestamps"
+            )
+
+        self.get_logger().info(
+            f"{signal_name}: stale -> recovered "
+            f"(measurement_time={measurement_time.isoformat()}, "
+            f"receipt_time={receipt_time.isoformat()})"
         )
 
 
