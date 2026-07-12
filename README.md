@@ -3,7 +3,7 @@
 A small Python and ROS 2 project demonstrating telemetry freshness,
 stale-signal recovery, and QoS trade-offs at the robot-to-platform boundary.
 
-![Terminal demo showing independent telemetry failures and recoveries](docs/assets/telemetry-demo.gif)
+![Terminal demo showing independent stale and recovery transitions](docs/assets/telemetry-demo.gif)
 
 The battery and position streams become stale and recover independently before
 both ROS nodes shut down cleanly.
@@ -31,20 +31,38 @@ Python gateway node
   └── logs healthy, stale, and recovered transitions
 ```
 
+| Signal | Topic | ROS 2 message | Default rate | Stale threshold | Default pause |
+| --- | --- | --- | ---: | ---: | --- |
+| Position | `/telemetry/position` | `geometry_msgs/msg/PoseStamped` | 1 Hz | 2.5 s | `[21 s, 26 s)` |
+| Battery | `/telemetry/battery` | `sensor_msgs/msg/BatteryState` | 1 Hz | 2.5 s | `[8 s, 13 s)` |
+
 The simulator pauses individual signals on a deterministic schedule. The
 gateway detects each pause and recovery independently, without requiring
-external hardware.
+external hardware. Pause windows include their start and exclude their end; a
+zero-second duration disables a pause. Simulated values continue advancing
+while publishing is paused. Position advances by 0.25 metres per sample, while
+battery percentage, charge, and voltage decrease deterministically. Battery
+current remains `NaN` because current draw is deliberately not modeled.
 
-## Project goals
+The 2.5-second freshness threshold tolerates one delayed or missed update from
+a 1 Hz signal without immediately declaring it stale.
 
-- Write clear, typed, idiomatic Python.
-- Keep ROS 2 integration separate from testable domain logic.
-- Compare reliable and best-effort ROS 2 QoS policies.
-- Explain why telemetry and robot commands may need different delivery
-  semantics.
-- Provide a short, reproducible local demonstration and automated tests.
+ROS-specific publishing, subscription, and message conversion stay in
+[`simulator_node.py`](robot_telemetry/simulator_node.py) and
+[`gateway_node.py`](robot_telemetry/gateway_node.py). The gateway decodes ROS
+messages into small immutable
+[Python values](robot_telemetry/telemetry_values.py) before passing them to the
+ROS-independent [`SignalTracker`](robot_telemetry/signal_tracker.py).
+[`PauseWindow`](robot_telemetry/pause_window.py) is also isolated in pure
+Python, so both behaviors can be tested without starting a ROS graph.
 
-## Development setup
+Each received signal retains three notions of time. The message header records
+when the simulator produced the measurement, wall-clock receipt time makes
+logs readable, and monotonic receipt time drives freshness decisions. Using
+monotonic receipt age prevents system-clock corrections or an incorrect robot
+clock from producing invalid stale-state decisions.
+
+## Run locally
 
 The development environment uses ROS 2 Jazzy on Ubuntu 24.04 in Docker. It has
 been tested with Docker Desktop on Apple Silicon.
@@ -69,6 +87,13 @@ colcon test --event-handlers console_direct+
 colcon test-result --verbose
 ```
 
+The pure Python tests can also run directly on the host. ROS-only tests are
+skipped there and run authoritatively in the Jazzy container:
+
+```bash
+python3 -m unittest discover -s test -v
+```
+
 After building, source the workspace and launch the complete local pipeline:
 
 ```bash
@@ -88,6 +113,41 @@ ros2 launch robot_telemetry local_pipeline.launch.py \
 
 The container is removed when its shell exits, so its build artifacts last only
 for that development session.
+
+### Runtime parameters
+
+The launch file exposes independent `publisher_reliability` and
+`gateway_reliability` arguments. The nodes also validate these ROS parameters
+when they start:
+
+| Simulator parameter | Default | Purpose |
+| --- | ---: | --- |
+| `publish_rate_hz` | `1.0` | Publishing rate for both signals |
+| `battery_pause_start_seconds` | `8.0` | Start of the battery pause |
+| `battery_pause_duration_seconds` | `5.0` | Battery pause length; `0.0` disables it |
+| `position_pause_start_seconds` | `21.0` | Start of the position pause |
+| `position_pause_duration_seconds` | `5.0` | Position pause length; `0.0` disables it |
+| `qos_reliability` | `reliable` | Reliability offered for both topics |
+
+| Gateway parameter | Default | Purpose |
+| --- | ---: | --- |
+| `position_stale_threshold_seconds` | `2.5` | Maximum accepted position receipt age |
+| `battery_stale_threshold_seconds` | `2.5` | Maximum accepted battery receipt age |
+| `qos_reliability` | `reliable` | Reliability requested for both topics |
+
+Parameters other than the launch-level QoS arguments can be overridden when
+running the nodes directly with standard ROS arguments. For example, in
+separate ROS shells:
+
+```bash
+ros2 run robot_telemetry robot_simulator --ros-args \
+  -p publish_rate_hz:=2.0 \
+  -p battery_pause_duration_seconds:=0.0
+
+ros2 run robot_telemetry telemetry_gateway --ros-args \
+  -p position_stale_threshold_seconds:=1.5 \
+  -p battery_stale_threshold_seconds:=1.5
+```
 
 ## QoS compatibility experiment
 
@@ -114,17 +174,37 @@ local setup, the matched reliable and best-effort runs both delivered position
 and battery normally. The experiment demonstrates endpoint compatibility, not
 packet loss behavior under an impaired network.
 
+## What I learned
+
+- Small data classes, generic domain types, and injected clock functions keep
+  Python code typed and testable without recreating Java-style infrastructure.
+- `rclpy` callbacks work well as narrow boundaries: decode the ROS message,
+  capture receipt time, and delegate health rules to ordinary Python code.
+- Source timestamps explain when measurements were produced, but monotonic
+  receipt age is the safer basis for detecting whether updates have stopped.
+- Logging state transitions is more useful than repeating the same stale
+  warning on every timer tick. It makes failures visible without log noise.
+- QoS reliability follows an offered/requested model. Compatible reliable and
+  best-effort runs looked the same on a healthy local machine, while the
+  incompatible pairing rejected delivery before network quality mattered.
+- Periodic telemetry can often favor the newest sample over retransmitting an
+  older one. Commands commonly need reliable delivery plus IDs,
+  acknowledgements, timeouts, expiry, and idempotency; reliable DDS delivery
+  alone does not prove that a robot executed a command.
+
 ## Deliberately out of scope
 
 - HTTP or WebSocket forwarding
 - A fleet backend or persistent database
 - Robot command handling
 - Custom ROS messages
+- Authentication or encryption configuration
+- Retry queues or offline buffering
 - Multi-robot discovery
 - Production deployment and dashboards
 
-Networking may be explored later, but only after the local ROS 2 pipeline is
-working and tested.
+These exclusions keep the repository focused on one complete, reproducible ROS
+telemetry path rather than a partial production platform.
 
 ## About
 
