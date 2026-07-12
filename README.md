@@ -3,10 +3,10 @@
 A small Python and ROS 2 project demonstrating telemetry freshness,
 stale-signal recovery, and QoS trade-offs at the robot-to-platform boundary.
 
-> **Status:** The simulator and gateway form a working local telemetry path.
-> Position and battery signals are tracked independently through healthy,
-> stale, and recovered transitions. QoS reliability is configurable; the
-> compatibility experiment and final documentation are next.
+![Terminal demo showing independent telemetry failures and recoveries](docs/assets/telemetry-demo.gif)
+
+The battery and position streams become stale and recover independently before
+both ROS nodes shut down cleanly.
 
 ## Why this project exists
 
@@ -34,13 +34,6 @@ Python gateway node
 The simulator pauses individual signals on a deterministic schedule. The
 gateway detects each pause and recovery independently, without requiring
 external hardware.
-
-## Demo
-
-![Terminal demo showing independent telemetry failures and recoveries](docs/assets/telemetry-demo.gif)
-
-The battery and position streams become stale and recover independently before
-both ROS nodes shut down cleanly.
 
 ## Project goals
 
@@ -95,6 +88,31 @@ ros2 launch robot_telemetry local_pipeline.launch.py \
 
 The container is removed when its shell exits, so its build artifacts last only
 for that development session.
+
+## QoS compatibility experiment
+
+The experiment kept the telemetry history, queue depth, and durability fixed
+while varying only publisher and subscriber reliability. For each pairing, the
+position and battery endpoints were inspected while the pipeline was running:
+
+```bash
+ros2 topic info /telemetry/position --verbose --no-daemon --spin-time 2
+ros2 topic info /telemetry/battery --verbose --no-daemon --spin-time 2
+```
+
+| Publisher offer | Gateway request | Observed result |
+| --- | --- | --- |
+| Reliable | Reliable | Compatible; both signals became healthy. |
+| Best effort | Best effort | Compatible; both signals became healthy. |
+| Reliable | Best effort | Compatible; both signals became healthy. |
+| Best effort | Reliable | Incompatible; both topics reported a `RELIABILITY` warning and the gateway received neither signal. |
+
+ROS 2 matches requested QoS against what a publisher offers. A reliable
+publisher can satisfy a best-effort subscriber, but a best-effort publisher
+cannot satisfy a subscriber that requires reliable delivery. On this healthy
+local setup, the matched reliable and best-effort runs both delivered position
+and battery normally. The experiment demonstrates endpoint compatibility, not
+packet loss behavior under an impaired network.
 
 ## Deliberately out of scope
 
