@@ -5,7 +5,7 @@ stale-signal recovery, and QoS trade-offs at the robot-to-platform boundary.
 
 > **Status:** The simulator and gateway form a working local telemetry path.
 > Position and battery signals are tracked independently through healthy,
-> stale, and recovered transitions. Launch and QoS work are next.
+> stale, and recovered transitions. Integration testing and QoS work are next.
 
 ## Why this project exists
 
@@ -67,6 +67,15 @@ colcon build --symlink-install
 colcon test --event-handlers console_direct+
 colcon test-result --verbose
 ```
+
+After building, source the workspace and launch the complete local pipeline:
+
+```bash
+source install/setup.bash
+ros2 launch robot_telemetry local_pipeline.launch.py
+```
+
+The simulator and gateway run together until you stop them with `Ctrl+C`.
 
 The container is removed when its shell exits, so its build artifacts last only
 for that development session.
