@@ -26,6 +26,7 @@ setup(
     entry_points={
         "console_scripts": [
             "robot_simulator = robot_telemetry.simulator_node:main",
+            "telemetry_gateway = robot_telemetry.gateway_node:main",
         ],
     },
 )

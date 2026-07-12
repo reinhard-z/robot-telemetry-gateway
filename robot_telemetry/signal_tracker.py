@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import math
+import time
 from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
-import math
-import time
+from typing import Generic, TypeVar
+
+
+SignalValue = TypeVar("SignalValue")
 
 
 class SignalState(Enum):
@@ -25,7 +29,7 @@ class SignalTransition(Enum):
     RECOVERED = "recovered"
 
 
-class SignalTracker:
+class SignalTracker(Generic[SignalValue]):
     """Track receipt age and health transitions for one telemetry signal.
 
     A signal becomes stale when its age is greater than or equal to the
@@ -39,13 +43,16 @@ class SignalTracker:
         *,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
+        """Create a tracker with a positive freshness threshold."""
         if (
             isinstance(stale_threshold, bool)
             or not isinstance(stale_threshold, (int, float))
             or not math.isfinite(stale_threshold)
             or stale_threshold <= 0
         ):
-            raise ValueError("stale_threshold must be a positive finite number")
+            raise ValueError(
+                "stale_threshold must be a positive finite number"
+            )
 
         self._stale_threshold = float(stale_threshold)
         self._clock = clock
@@ -53,6 +60,7 @@ class SignalTracker:
         self._latest_measurement_time: datetime | None = None
         self._latest_receipt_time: datetime | None = None
         self._latest_receipt_monotonic: float | None = None
+        self._latest_value: SignalValue | None = None
         self._last_clock_reading: float | None = None
 
     @property
@@ -76,8 +84,13 @@ class SignalTracker:
         return self._latest_receipt_time
 
     @property
+    def latest_value(self) -> SignalValue | None:
+        """Return the latest decoded value, or ``None`` while waiting."""
+        return self._latest_value
+
+    @property
     def age(self) -> float | None:
-        """Return seconds since the latest receipt, or ``None`` while waiting."""
+        """Return seconds since receipt, or ``None`` while waiting."""
         if self._latest_receipt_monotonic is None:
             return None
 
@@ -86,16 +99,18 @@ class SignalTracker:
     def record_measurement(
         self,
         *,
+        value: SignalValue,
         measurement_time: datetime,
         receipt_time: datetime,
     ) -> SignalTransition | None:
-        """Record an arrival and return a transition only when health changes."""
+        """Record an arrival and report a health transition if one occurs."""
         receipt_monotonic = self._read_clock()
         previous_state = self._state
 
         self._latest_measurement_time = measurement_time
         self._latest_receipt_time = receipt_time
         self._latest_receipt_monotonic = receipt_monotonic
+        self._latest_value = value
         self._state = SignalState.HEALTHY
 
         if previous_state is SignalState.WAITING:
