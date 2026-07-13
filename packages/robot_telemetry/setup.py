@@ -23,14 +23,13 @@ setup(
     zip_safe=True,
     maintainer="Reinhard Zach",
     maintainer_email="31817478+reinhard-z@users.noreply.github.com",
-    description="ROS 2 telemetry simulator and freshness-tracking gateway.",
+    description="ROS 2 telemetry simulator, launch, and integration tests.",
     license="MIT",
     url="https://github.com/reinhard-z/robot-telemetry-gateway",
     extras_require={"test": ["pytest"]},
     entry_points={
         "console_scripts": [
             "robot_simulator = robot_telemetry.simulator_node:main",
-            "telemetry_gateway = robot_telemetry.gateway_node:main",
         ],
     },
 )

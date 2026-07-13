@@ -3,7 +3,7 @@
 <package format="3">
   <name>robot_telemetry</name>
   <version>0.1.0</version>
-  <description>ROS 2 telemetry simulator and freshness-tracking gateway.</description>
+  <description>ROS 2 telemetry simulator, launch, and integration tests.</description>
 
   <maintainer email="31817478+reinhard-z@users.noreply.github.com">Reinhard Zach</maintainer>
   <license>MIT</license>
@@ -15,12 +15,12 @@
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>rclpy</exec_depend>
+  <exec_depend>robot_telemetry_gateway</exec_depend>
   <exec_depend>ros2launch</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
 
   <test_depend>launch_testing</test_depend>
   <test_depend>python3-pytest</test_depend>
-  <test_depend>robot_telemetry_gateway</test_depend>
 
   <export>
     <build_type>ament_python</build_type>

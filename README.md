@@ -1,6 +1,6 @@
 # Robot Telemetry Gateway
 
-A small Python and ROS 2 project demonstrating telemetry freshness,
+A small Python, C++, and ROS 2 project demonstrating telemetry freshness,
 stale-signal recovery, and QoS trade-offs at the robot-to-platform boundary.
 
 ![Terminal demo showing independent stale and recovery transitions](docs/assets/telemetry-demo.gif)
@@ -10,9 +10,9 @@ both ROS nodes shut down cleanly.
 
 ## Why this project exists
 
-I am building this project to deepen my hands-on Python and ROS 2 experience
-while applying the production engineering practices I use in Java and
-TypeScript systems.
+I am building this project to deepen my hands-on C++ and ROS 2 experience while
+using Python for simulation and integration testing. It applies the production
+engineering practices I use in Java and TypeScript systems.
 
 The focus is deliberately narrow: build one understandable, tested telemetry
 path and explore how it behaves when sensor updates stop and recover.
@@ -25,7 +25,7 @@ ROS 2 simulator node
   └── battery telemetry  (1 Hz)
               │
               ▼
-Python gateway node
+C++ gateway node
   ├── records measurement and receipt times
   ├── tracks signal freshness independently
   └── logs healthy, stale, and recovered transitions
@@ -47,16 +47,17 @@ current remains `NaN` because current draw is deliberately not modeled.
 The 2.5-second freshness threshold tolerates one delayed or missed update from
 a 1 Hz signal without immediately declaring it stale.
 
-ROS-specific publishing, subscription, and message conversion stay in
-[`simulator_node.py`](packages/robot_telemetry/robot_telemetry/simulator_node.py)
-and [`gateway_node.py`](packages/robot_telemetry/robot_telemetry/gateway_node.py).
+ROS-specific publishing stays in the Python
+[`simulator_node.py`](packages/robot_telemetry/robot_telemetry/simulator_node.py).
+Subscription and message conversion live in the C++
+[`telemetry_gateway_node.cpp`](packages/robot_telemetry_gateway/src/telemetry_gateway_node.cpp).
 The gateway decodes ROS messages into small immutable
-[Python values](packages/robot_telemetry/robot_telemetry/telemetry_values.py)
+[value types](packages/robot_telemetry_gateway/include/robot_telemetry_gateway/telemetry_values.hpp)
 before passing them to the ROS-independent
-[`SignalTracker`](packages/robot_telemetry/robot_telemetry/signal_tracker.py).
+[`SignalTracker`](packages/robot_telemetry_gateway/include/robot_telemetry_gateway/signal_tracker.hpp).
 [`PauseWindow`](packages/robot_telemetry/robot_telemetry/pause_window.py) is
-also isolated in pure Python, so both behaviors can be tested without starting
-a ROS graph.
+isolated in pure Python. Both domain behaviors can therefore be tested without
+starting a ROS graph.
 
 Each received signal retains three notions of time. The message header records
 when the simulator produced the measurement, wall-clock receipt time makes
@@ -82,7 +83,7 @@ directory:
 ./scripts/ros.sh
 ```
 
-Build and test the package inside the container:
+Build and test the packages inside the container:
 
 ```bash
 colcon build --symlink-install
@@ -148,7 +149,7 @@ ros2 run robot_telemetry robot_simulator --ros-args \
   -p publish_rate_hz:=2.0 \
   -p battery_pause_duration_seconds:=0.0
 
-ros2 run robot_telemetry telemetry_gateway --ros-args \
+ros2 run robot_telemetry_gateway telemetry_gateway --ros-args \
   -p position_stale_threshold_seconds:=1.5 \
   -p battery_stale_threshold_seconds:=1.5
 ```
@@ -180,10 +181,10 @@ packet loss behavior under an impaired network.
 
 ## What I learned
 
-- Small data classes, generic domain types, and injected clock functions keep
-  Python code typed and testable without recreating Java-style infrastructure.
-- `rclpy` callbacks work well as narrow boundaries: decode the ROS message,
-  capture receipt time, and delegate health rules to ordinary Python code.
+- Small value types, templates, and injected clock functions keep the C++
+  health rules typed and testable without starting a ROS graph.
+- `rclcpp` callbacks work well as narrow boundaries: decode the ROS message,
+  capture receipt time, and delegate health rules to ordinary C++ code.
 - Source timestamps explain when measurements were produced, but monotonic
   receipt age is the safer basis for detecting whether updates have stopped.
 - Logging state transitions is more useful than repeating the same stale
