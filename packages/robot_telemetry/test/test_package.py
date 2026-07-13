@@ -18,7 +18,7 @@ class PackageMetadataTest(unittest.TestCase):
 
     def test_package_declares_a_version_and_license(self) -> None:
         """Required release metadata must remain explicit."""
-        self.assertEqual(self.metadata.findtext("version"), "0.1.0")
+        self.assertEqual(self.metadata.findtext("version"), "0.2.0")
         self.assertEqual(self.metadata.findtext("license"), "MIT")
 
     def test_cpp_gateway_is_a_runtime_dependency(self) -> None:
