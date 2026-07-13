@@ -1,4 +1,4 @@
-"""Verify invalid startup behavior for both gateway implementations."""
+"""Verify that invalid C++ gateway configuration fails clearly."""
 
 from __future__ import annotations
 
@@ -21,25 +21,12 @@ except ImportError as error:
     raise unittest.SkipTest("requires a sourced ROS 2 environment") from error
 
 
-# Each implementation keeps useful but slightly different threshold wording.
 INVALID_CASES = {
-    "python_threshold": (
-        "robot_telemetry",
-        {"position_stale_threshold_seconds": 0.0},
-        "stale_threshold must be a positive finite number",
-    ),
-    "python_qos": (
-        "robot_telemetry",
-        {"qos_reliability": "invalid"},
-        "qos_reliability must be 'reliable' or 'best_effort'",
-    ),
-    "cpp_threshold": (
-        "robot_telemetry_gateway",
+    "threshold": (
         {"position_stale_threshold_seconds": 0.0},
         "position_stale_threshold_seconds must be a positive finite number",
     ),
-    "cpp_qos": (
-        "robot_telemetry_gateway",
+    "qos": (
         {"qos_reliability": "invalid"},
         "qos_reliability must be 'reliable' or 'best_effort'",
     ),
@@ -48,13 +35,13 @@ INVALID_CASES = {
 
 @pytest.mark.launch_test
 def generate_test_description() -> tuple[LaunchDescription, dict[str, object]]:
-    """Start both gateways with invalid threshold and QoS values."""
+    """Start one gateway process for each invalid parameter category."""
     gateways: dict[str, LaunchNode] = {}
     diagnostics: dict[str, str] = {}
 
-    for name, (package, parameters, diagnostic) in INVALID_CASES.items():
+    for name, (parameters, diagnostic) in INVALID_CASES.items():
         gateways[name] = LaunchNode(
-            package=package,
+            package="robot_telemetry_gateway",
             executable="telemetry_gateway",
             name=f"invalid_{name}_gateway",
             parameters=[parameters],

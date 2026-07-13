@@ -1,4 +1,4 @@
-"""Shared launch-test contract for both telemetry gateway implementations."""
+"""Launch-test contract for the production telemetry pipeline."""
 
 from __future__ import annotations
 
@@ -56,17 +56,15 @@ QOS_PAIRINGS = (
 )
 
 
-def build_pipeline_test_description(
-    *,
-    gateway_package: str,
-    gateway_label: str,
-) -> tuple[LaunchDescription, dict[str, object]]:
+def build_pipeline_test_description() -> tuple[
+    LaunchDescription, dict[str, object]
+]:
     """Launch one isolated simulator/gateway pair for each QoS combination."""
     actions: list[object] = []
     gateways: dict[str, LaunchNode] = {}
 
     for pairing in QOS_PAIRINGS:
-        topic_root = f"/parity/{gateway_label}/{pairing.name}"
+        topic_root = f"/pipeline/{pairing.name}"
         remappings = [
             ("/telemetry/position", f"{topic_root}/position"),
             ("/telemetry/battery", f"{topic_root}/battery"),
@@ -74,7 +72,7 @@ def build_pipeline_test_description(
         simulator = LaunchNode(
             package="robot_telemetry",
             executable="robot_simulator",
-            name=f"{gateway_label}_simulator_{pairing.name}",
+            name=f"simulator_{pairing.name}",
             parameters=[
                 {
                     "publish_rate_hz": 10.0,
@@ -88,9 +86,9 @@ def build_pipeline_test_description(
             remappings=remappings,
         )
         gateway = LaunchNode(
-            package=gateway_package,
+            package="robot_telemetry_gateway",
             executable="telemetry_gateway",
-            name=f"{gateway_label}_gateway_{pairing.name}",
+            name=f"gateway_{pairing.name}",
             parameters=[
                 {
                     "position_stale_threshold_seconds": 0.3,
@@ -112,9 +110,7 @@ def build_pipeline_test_description(
 
 
 class PipelineContractMixin:
-    """Apply the same observable pipeline contract to either gateway."""
-
-    GATEWAY_LABEL: str
+    """Verify the observable behavior of the production pipeline."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -149,7 +145,7 @@ class PipelineContractMixin:
         observer_qos = telemetry_qos_profile("best_effort")
 
         for pairing in pairings:
-            topic_root = f"/parity/{self.GATEWAY_LABEL}/{pairing.name}"
+            topic_root = f"/pipeline/{pairing.name}"
             subscriptions.extend(
                 (
                     self.node.create_subscription(

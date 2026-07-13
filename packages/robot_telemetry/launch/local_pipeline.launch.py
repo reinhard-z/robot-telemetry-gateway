@@ -31,7 +31,7 @@ def generate_launch_description() -> LaunchDescription:
                 parameters=[{"qos_reliability": publisher_reliability}],
             ),
             Node(
-                package="robot_telemetry",
+                package="robot_telemetry_gateway",
                 executable="telemetry_gateway",
                 output="screen",
                 parameters=[{"qos_reliability": gateway_reliability}],

@@ -21,6 +21,13 @@ class PackageMetadataTest(unittest.TestCase):
         self.assertEqual(self.metadata.findtext("version"), "0.1.0")
         self.assertEqual(self.metadata.findtext("license"), "MIT")
 
+    def test_cpp_gateway_is_a_runtime_dependency(self) -> None:
+        """The installed launch file must bring in its C++ gateway package."""
+        dependencies = {
+            element.text for element in self.metadata.findall("exec_depend")
+        }
+        self.assertIn("robot_telemetry_gateway", dependencies)
+
 
 if __name__ == "__main__":
     unittest.main()
