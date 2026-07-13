@@ -1,4 +1,4 @@
-"""Run the shared telemetry contract against the Python gateway."""
+"""Run the shared telemetry contract against the C++ gateway."""
 
 from __future__ import annotations
 
@@ -27,19 +27,19 @@ except ImportError as error:
 @pytest.mark.launch_test
 @launch_testing.markers.keep_alive
 def generate_test_description() -> tuple[LaunchDescription, dict[str, object]]:
-    """Launch the Python gateway for every QoS pairing."""
+    """Launch the C++ gateway for every QoS pairing."""
     return build_pipeline_test_description(
-        gateway_package="robot_telemetry",
-        gateway_label="python",
+        gateway_package="robot_telemetry_gateway",
+        gateway_label="cpp",
     )
 
 
-class PipelineTest(PipelineContractMixin, unittest.TestCase):
-    """Apply the shared contract to the Python gateway."""
+class CppPipelineTest(PipelineContractMixin, unittest.TestCase):
+    """Apply the shared contract to the C++ gateway."""
 
-    GATEWAY_LABEL = "python"
+    GATEWAY_LABEL = "cpp"
 
 
 @launch_testing.post_shutdown_test()
-class PipelineShutdownTest(PipelineShutdownMixin, unittest.TestCase):
-    """Apply the shared shutdown contract to the Python pipeline."""
+class CppPipelineShutdownTest(PipelineShutdownMixin, unittest.TestCase):
+    """Apply the shared shutdown contract to the C++ pipeline."""
